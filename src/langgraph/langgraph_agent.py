@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.prebuilt import ToolExecutor, create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 import json
 from src.connection_manager import ConnectionManager
 
@@ -15,21 +16,22 @@ class LangGraphAgent:
         self.bind_tools = bind_tools
         self.connection_manager = connection_manager
         self._load_environment_variables()
-
+        self.checkpointer = MemorySaver()
+        self.config = {"configurable": {"thread_id": "test-thread"}}
         # Create LangGraph agent
         if bind_tools:
             if self.model_provider == "openai":
-                model = ChatOpenAI(model=self.model, temperature=0.7, openai_api_key=self.api_key)
+                model = ChatOpenAI(model=self.model, temperature=0.7, openai_api_key=self.api_key,verbose=True)
             else:
-                model = ChatAnthropic(model=self.model ,temperature=0.7,api_key=self.api_key)
+                model = ChatAnthropic(model=self.model ,temperature=0.7,api_key=self.api_key,verbose=True)
             tools = self._collect_tools_from_connections()
             tool_executor = ToolExecutor(tools)
-            self.langgraphAgent =  create_react_agent(model, tool_executor.tools)
+            self.langgraphAgent =  create_react_agent(model, tool_executor.tools, checkpointer=self.checkpointer)
         else:
             if self.model_provider == "openai":
-                self.langgraphAgent =  ChatOpenAI(model=self.model, api_key=self.api_key)
+                self.langgraphAgent =  ChatOpenAI(model=self.model, api_key=self.api_key,verbose=True)
             else:
-                self.langgraphAgent =  ChatAnthropic(model=self.model, api_key=self.api_key)
+                self.langgraphAgent =  ChatAnthropic(model=self.model, api_key=self.api_key,verbose=True)
 
     def _load_environment_variables(self):
         load_dotenv()
@@ -53,13 +55,14 @@ class LangGraphAgent:
     def invoke(self, user_input: str):
         if self.bind_tools:
             formatted_input = {"messages": [ {"role": "user","content": user_input}]}
-            return self.langgraphAgent.invoke(formatted_input)
+            return self.langgraphAgent.invoke(formatted_input, config=self.config)
         else:
-            return self.langgraphAgent.invoke(user_input)
+            return self.langgraphAgent.invoke(user_input, config=self.config)
 
     def invoke_chat(self, messages: list[dict]):
         state = {"messages": messages}
-        final_state = self.langgraphAgent.invoke(state)
+        final_state = self.langgraphAgent.invoke(state, config=self.config)
+        print(final_state)
         response = next(
             msg.content for msg in reversed(final_state["messages"])
             if msg.content and isinstance(msg, AIMessage)

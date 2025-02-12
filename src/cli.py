@@ -246,7 +246,7 @@ class ZerePyCLI:
 
     def _handle_command(self, input_string: str) -> None:
             """Parse and handle a command input"""
-            input_list = input_string.split()
+            input_list = shlex.split(input_string) 
             command_string = input_list[0].lower()
 
         #try:
@@ -522,7 +522,7 @@ class ZerePyCLI:
         
 
         #load langgraph agent 
-        langgraph_agent = LangGraphAgent("openai","gpt-3.5-turbo",True,self.agent.connection_manager)
+        langgraph_agent = LangGraphAgent("openai","gpt-4o",True,self.agent.connection_manager)
         messages = []
 
         logger.info(f"\nStarting chat with {self.agent.name}")

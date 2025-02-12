@@ -105,13 +105,13 @@ class ZerePyAgent:
                 self.driver_llm = LangGraphAgent(
                     model_provider=self.executor_model_provider,
                     model=self.executor_model,
-                    bind_tools=False,
+                    bind_tools=True,
                     connection_manager=self.connection_manager
                 )
                 self.character_llm = LangGraphAgent(
                     model_provider=self.model_provider,
                     model=self.model,
-                    bind_tools=False,
+                    bind_tools=True,
                     connection_manager=self.connection_manager
                 )
                 self.executor_agent = LangGraphAgent(
