@@ -31,7 +31,6 @@ class GoatConfigurationError(GoatConnectionError):
 class GoatConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         logger.info("🐐 Initializing Goat connection...")
-        super().__init__(config)
         self._is_configured = False
         self._wallet_client: WalletClientBase | None = None
         self._plugins: Dict[str, PluginBase] = {}

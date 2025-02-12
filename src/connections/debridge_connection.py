@@ -19,6 +19,7 @@ class DeBridgeAPIError(DeBridgeConnectionError):
 class DeBridgeConnection(BaseConnection):
 
     def __init__(self, config: Dict[str, Any]):
+        logger.info("🔗 Initializing DeBridge connection...")
         super().__init__(config)
         load_dotenv()
         self.api_url = os.getenv("DEBRIDGE_API_URL", "https://dln.debridge.finance/v1.0")
