@@ -31,6 +31,10 @@ class ZerePyAgent:
             logger.error("Could not load ZerePy Agent")
             raise e
 
+    def perform_action(self, connection: str, action: str, **kwargs) -> None:
+        """Delegate action execution to the connection manager"""
+        return self.connection_manager.perform_action(connection, action, **kwargs)
+
     def _build_graph(self):
         # Construct graph
         graph_builder = StateGraph(AgentState)

@@ -12,6 +12,7 @@ from src.helpers import print_h_bar
 from src.action_handler import register_action
 from goat import PluginBase, ToolBase, WalletClientBase, get_tools
 from goat_wallets.web3 import Web3EVMWalletClient
+from langgraph.prebuilt import ToolExecutor
 
 logger = logging.getLogger("connections.goat_connection")
 
@@ -37,7 +38,7 @@ class GoatConnection(BaseConnection):
         self._action_registry: Dict[str, ToolBase] = {}
         self._config = self.validate_config(
             config
-        )  # Store config but don't register actions yet
+        )  
 
     def _resolve_type(self, raw_value: str, module) -> Any:
         """Resolve a type from a string, either from plugin module or fully qualified path"""
@@ -249,11 +250,9 @@ class GoatConnection(BaseConnection):
             )
             self._action_registry[tool.name] = tool
 
-            register_action(tool.name)(
-                lambda agent, tool_name=tool.name, **kwargs: self.perform_action(
-                    tool_name, **kwargs
-                )
-            )
+        # Create tool executor for the registered actions
+        tools = [self._create_tool(action) for action in self.actions.values()]
+        self.tool_executor = ToolExecutor(tools)
 
     def register_actions(self) -> None:
         """Initial action registration - deferred until wallet is configured"""
@@ -391,7 +390,7 @@ class GoatConnection(BaseConnection):
             logger.error(error_msg)
             raise GoatConfigurationError(error_msg)
 
-    def perform_action(self, action_name: str, **kwargs) -> Any:
+    def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute a GOAT action using a plugin's tool"""
         action = self.actions.get(action_name)
         if not action:
