@@ -215,27 +215,30 @@ class DeBridgeConnection(BaseConnection):
             logger.error(f"Failed to fetch supported chains: {str(e)}")
             raise DeBridgeAPIError(f"Failed to fetch supported chains: {str(e)}")
 
-    def get_tokens_info(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def get_tokens_info(self, chainId: str, search: str = None) -> Dict[str, Any]:
         """
         Get token information for a specific chain
+        Args:
+            chainId: Chain ID to get token information for
+            search: Optional search term to filter tokens by name or symbol
         Returns: Token information including name, symbol, and decimals
         """
         try:
             response = self._make_request(
                 "GET",
                 f"{self.api_url}/token-list",
-                params={"chainId": params["chainId"]}
+                params={"chainId": chainId}
             )
             
             if response.get("error"):
                 raise DeBridgeAPIError(f"API Error: {response['error']}")
             
             # Extract token data
-            tokens = response.get("tokens", [])
+            tokens = response.get("tokens", {}).values()
             
             # If search query provided, filter tokens
-            if "search" in params:
-                search_term = params["search"].lower()
+            if search:
+                search_term = search.lower()
                 tokens = [
                     token for token in tokens
                     if search_term in token.get("name", "").lower() or
@@ -243,7 +246,7 @@ class DeBridgeConnection(BaseConnection):
                     search_term in token.get("address", "").lower()
                 ]
             
-            # Limit results if specified
+            Limit results if specified
             if "limit" in params:
                 try:
                     limit = int(params["limit"])
@@ -253,7 +256,7 @@ class DeBridgeConnection(BaseConnection):
                     
             return {
                 "status": "success",
-                "tokens": tokens,
+                "tokens": list(tokens),
                 "count": len(tokens)
             }
             
