@@ -11,6 +11,7 @@ from src.connections.base_connection import BaseConnection, Action, ActionParame
 from src.helpers import print_h_bar
 from src.action_handler import register_action
 from goat import PluginBase, ToolBase, WalletClientBase, get_tools
+from goat_adapters.langchain import get_on_chain_tools
 from goat_wallets.web3 import Web3EVMWalletClient
 from langgraph.prebuilt import ToolExecutor
 
@@ -250,8 +251,10 @@ class GoatConnection(BaseConnection):
             )
             self._action_registry[tool.name] = tool
 
-        # Create tool executor for the registered actions
-        tools = [self._create_tool(action) for action in self.actions.values()]
+        # # Create tool executor for the registered actions
+        # tools = [self._create_tool(action) for action in self.actions.values()]
+        # self.tool_executor = ToolExecutor(tools)
+        tools = get_on_chain_tools(self._wallet_client, list(self._plugins.values()))
         self.tool_executor = ToolExecutor(tools)
 
     def register_actions(self) -> None:

@@ -86,6 +86,7 @@ class BaseConnection(ABC):
 
             method_name = action.name.replace('-', '_')
             method = getattr(self, method_name)
+            print(f"Method: {method}")
             return method(**tool_input)
         
         connection_name = self.__class__.__name__.lower().replace('connection', '')
