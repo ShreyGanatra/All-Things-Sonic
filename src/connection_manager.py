@@ -21,6 +21,7 @@ from src.connections.ethereum_connection import EthereumConnection
 from src.connections.together_connection import TogetherAIConnection
 from src.connections.debridge_connection import DeBridgeConnection
 from src.connections.defillama_connection import DefiLlamaConnection
+from src.connections.web_connection import WebConnection
 logger = logging.getLogger("connection_manager")
 
 
@@ -72,6 +73,8 @@ class ConnectionManager:
             return DeBridgeConnection
         elif class_name == "defillama":
             return DefiLlamaConnection
+        elif class_name == "web":
+            return WebConnection
         return None
 
     def _register_connection(self, config_dic: Dict[str, Any]) -> None:
