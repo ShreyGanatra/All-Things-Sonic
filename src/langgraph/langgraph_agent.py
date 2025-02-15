@@ -10,7 +10,7 @@ from src.connection_manager import ConnectionManager
 
 
 class LangGraphAgent:
-    def __init__(self, model_provider: str, model: str, bind_tools: bool, connection_manager: ConnectionManager=None):
+    def __init__(self, model_provider: str, model: str, bind_tools: bool, connection_manager: ConnectionManager=None, prompt:str=None,debug:bool=False):
         self.model_provider = model_provider
         self.model = model
         self.bind_tools = bind_tools
@@ -21,12 +21,15 @@ class LangGraphAgent:
         # Create LangGraph agent
         if bind_tools:
             if self.model_provider == "openai":
-                model = ChatOpenAI(model=self.model, temperature=0.7, openai_api_key=self.api_key,verbose=True)
+                model = ChatOpenAI(model=self.model, temperature=1, openai_api_key=self.api_key,verbose=True)
             else:
-                model = ChatAnthropic(model=self.model ,temperature=0.7,api_key=self.api_key,verbose=True)
+                model = ChatAnthropic(model=self.model ,temperature=1,api_key=self.api_key,verbose=True)
             tools = self._collect_tools_from_connections()
             tool_executor = ToolExecutor(tools)
-            self.langgraphAgent =  create_react_agent(model, tool_executor.tools, checkpointer=self.checkpointer)
+            if prompt:
+                self.langgraphAgent =  create_react_agent(model, tool_executor.tools, checkpointer=self.checkpointer, prompt=prompt,debug=debug)
+            else:
+                self.langgraphAgent =  create_react_agent(model, tool_executor.tools, checkpointer=self.checkpointer,debug=debug)
         else:
             if self.model_provider == "openai":
                 self.langgraphAgent =  ChatOpenAI(model=self.model, api_key=self.api_key,verbose=True)
