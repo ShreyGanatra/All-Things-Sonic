@@ -2,9 +2,9 @@ import datetime, random, time, logging, json
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict
 from src.helpers import print_h_bar
-from src.langgraph.langgraph_agent import LangGraphAgent
+from src.langgraph_agent.langgraph_agent import LangGraphAgent
 from src.connection_manager import ConnectionManager
-from src.langgraph.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT, \
+from src.langgraph_agent.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT, \
     OBSERVATION_PROMPT
 
 # Initialize logger
