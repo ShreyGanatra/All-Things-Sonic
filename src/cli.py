@@ -15,8 +15,9 @@ from src.agent import ZerePyAgent
 from src.legacy_agent import LegacyZerePyAgent
 from src.agent_factory import AgentFactory
 from src.helpers import print_h_bar
-from src.langgraph.langgraph_agent import LangGraphAgent
+from src.langgraph_agent.langgraph_agent import LangGraphAgent
 from src.prompts import SYSTEM_PROMPT
+from src.multi_agent import DeFiProtocolAnalyzer
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger("cli")
@@ -522,7 +523,8 @@ class ZerePyCLI:
         
 
         #load langgraph agent 
-        langgraph_agent = LangGraphAgent("openai","gpt-4o-mini",True,self.agent.connection_manager,prompt=SYSTEM_PROMPT,debug=True)
+        # langgraph_agent = LangGraphAgent("openai","gpt-4o-mini",True,self.agent.connection_manager,prompt=SYSTEM_PROMPT,debug=True)
+        langgraph_agent = DeFiProtocolAnalyzer("openai","gpt-4o",True,self.agent.connection_manager,debug=False)
         messages = []
 
         logger.info(f"\nStarting chat with {self.agent.name}")
@@ -538,6 +540,7 @@ class ZerePyCLI:
                 messages.append({"role": "user", "content": user_input})
 
                 response = langgraph_agent.invoke_chat(messages)
+                response = response["messages"][-1].content
                 messages.append({"role": "assistant", "content": response})
 
                 logger.info(f"\n{self.agent.name}: {response}")
