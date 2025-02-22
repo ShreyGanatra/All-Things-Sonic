@@ -3,7 +3,7 @@ import json
 import aiohttp
 import asyncio
 from datetime import datetime
-from exceptions import ApiError
+from src.twitter_scrapper.exceptions import ApiError
 from dataclasses import dataclass
 from urllib.parse import urlparse, parse_qs
 

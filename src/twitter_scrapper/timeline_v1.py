@@ -1,7 +1,7 @@
 from typing import List, Optional
 from dataclasses import dataclass
-from tweets import Tweet
-from profile import Profile
+from src.twitter_scrapper.tweets import Tweet
+from src.twitter_scrapper.profile import Profile
 
 @dataclass
 class QueryTweetsResponse:

@@ -1,9 +1,9 @@
 from typing import Dict, Any, TypeVar, List
 from dataclasses import dataclass
 
-from timeline_v1 import QueryTweetsResponse, QueryProfilesResponse
-from tweets import Tweet
-from profile import Profile
+from src.twitter_scrapper.timeline_v1 import QueryTweetsResponse, QueryProfilesResponse
+from src.twitter_scrapper.tweets import Tweet
+from src.twitter_scrapper.profile import Profile
 
 # Type alias for search timeline response
 SearchTimeline = Dict[str, Any]

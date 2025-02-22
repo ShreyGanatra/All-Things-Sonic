@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional, Callable, Union
 from datetime import datetime
-
+import aiohttp
 @dataclass
 class Tweet:
     """A Twitter tweet."""
@@ -133,72 +133,133 @@ class Retweeter:
     name: str
     profile_image_url: str
 
-def create_create_tweet_request(
+async def create_create_tweet_request(
     text: str,
-    reply_to_tweet_id: Optional[str] = None,
+    auth: "TwitterAuthBase",
+    tweet_id: Optional[str] = None,
     media_data: Optional[List[Dict[str, Any]]] = None,
     hide_link_preview: bool = False
-) -> Dict[str, Any]:
+) -> aiohttp.ClientResponse:
     """
-    Create request body for posting a tweet.
-    
+    Create and send a request to post a tweet.
+
     Args:
         text: Tweet text content
-        reply_to_tweet_id: Optional ID of tweet to reply to
-        media_data: Optional list of media attachments
+        auth: Twitter authentication object
+        tweet_id: Optional ID of tweet to reply to
+        media_data: Optional list of media data (each with 'data' and 'mediaType')
         hide_link_preview: Whether to hide link previews
-        
+
     Returns:
-        Request body dictionary
+        aiohttp.ClientResponse from the API call
+
+    Raises:
+        ValueError: If the response is not successful
     """
+    # Get cookies for headers
+    onboarding_task_url = 'https://api.twitter.com/1.1/onboarding/task.json'
+    cookies = list(auth.cookie_jar)
+    csrf_cookie = next((cookie for cookie in cookies if cookie.key == 'ct0'), None)
+
+    # Prepare headers
+    headers = {
+        'authorization': f'Bearer {auth.bearer_token}',
+        'cookie': await auth.get_cookie_string(),
+        'content-type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Nokia G20) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.88 Mobile Safari/537.36',
+        'x-guest-token': auth.guest_token,
+        'x-twitter-auth-type': 'OAuth2Client',
+        'x-twitter-active-user': 'yes',
+        'x-twitter-client-language': 'en',
+        'x-csrf-token': csrf_cookie.value if csrf_cookie else None
+    }
+
     variables = {
         'tweet_text': text,
         'dark_request': False,
         'media': {
-            'media_entities': media_data or [],
-            'possibly_sensitive': False
+            'media_entities': [],
+            'possibly_sensitive': False,
         },
         'semantic_annotation_ids': []
     }
-    
-    if reply_to_tweet_id:
-        variables['reply'] = {
-            'in_reply_to_tweet_id': reply_to_tweet_id,
-            'exclude_reply_user_ids': []
-        }
-        
+
     if hide_link_preview:
-        variables['card_uri'] = ''
-        
+        variables['card_uri'] = "tombstone://card"
+
+    if media_data and len(media_data) > 0:
+        media_ids = []
+        for item in media_data:
+            media_id = await upload_media(item['data'], auth, item['mediaType'])
+            media_ids.append(media_id)
+        variables['media']['media_entities'] = [
+            {'media_id': media_id, 'tagged_users': []} for media_id in media_ids
+        ]
+
+    if tweet_id:
+        variables['reply'] = {'in_reply_to_tweet_id': tweet_id}
+
     features = {
+        'interactive_text_enabled': True,
+        'longform_notetweets_inline_media_enabled': False,
+        'responsive_web_text_conversations_enabled': False,
+        'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
+        'vibe_api_enabled': False,
+        'rweb_lists_timeline_redesign_enabled': True,
+        'responsive_web_graphql_exclude_directive_enabled': True,
+        'verified_phone_label_enabled': False,
+        'creator_subscriptions_tweet_preview_api_enabled': True,
+        'responsive_web_graphql_timeline_navigation_enabled': True,
+        'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
         'tweetypie_unmention_optimization_enabled': True,
         'responsive_web_edit_tweet_api_enabled': True,
         'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
         'view_counts_everywhere_api_enabled': True,
         'longform_notetweets_consumption_enabled': True,
-        'responsive_web_twitter_article_tweet_consumption_enabled': False,
         'tweet_awards_web_tipping_enabled': False,
-        'longform_notetweets_rich_text_read_enabled': True,
-        'longform_notetweets_inline_media_enabled': True,
-        'responsive_web_graphql_exclude_directive_enabled': True,
-        'verified_phone_label_enabled': False,
         'freedom_of_speech_not_reach_fetch_enabled': True,
         'standardized_nudges_misinfo': True,
-        'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': True,
-        'responsive_web_media_download_video_enabled': False,
-        'responsive_web_enhance_cards_enabled': False
+        'longform_notetweets_rich_text_read_enabled': True,
+        'responsive_web_enhance_cards_enabled': False,
+        'subscriptions_verification_info_enabled': True,
+        'subscriptions_verification_info_reason_enabled': True,
+        'subscriptions_verification_info_verified_since_enabled': True,
+        'super_follow_badge_privacy_enabled': False,
+        'super_follow_exclusive_tweet_notifications_enabled': False,
+        'super_follow_tweet_api_enabled': False,
+        'super_follow_user_api_enabled': False,
+        'android_graphql_skip_api_media_color_palette': False,
+        'creator_subscriptions_subscription_count_enabled': False,
+        'blue_business_profile_image_shape_enabled': False,
+        'unified_cards_ad_metadata_container_dynamic_card_content_query_enabled': False,
+        'rweb_video_timestamps_enabled': False,
+        'c9s_tweet_anatomy_moderator_badge_enabled': False,
+        'responsive_web_twitter_article_tweet_consumption_enabled': False,
     }
-    
-    field_toggles = {
-        'withArticleRichContentState': False
-    }
-    
-    return {
+
+    payload = {
         'variables': variables,
         'features': features,
-        'fieldToggles': field_toggles,
-        'queryId': 'SoVnbfCycZ7fERGCwpZkYA'
+        'fieldToggles': {},
+        'queryId': 'a1p9RWpkYKBjWv_I3WzS-A'
     }
+
+    # Make the API call
+    async with auth.session.post(
+        'https://twitter.com/i/api/graphql/a1p9RWpkYKBjWv_I3WzS-A/CreateTweet',
+        headers=headers,
+        json=payload,
+        ssl=False
+    ) as response:
+        # Update cookies from response
+        if response.cookies:
+            auth.cookie_jar.update_cookies(response.cookies)
+
+        # Check for errors
+        if not response.ok:
+            raise ValueError(await response.text())
+
+        return response
 
 def create_create_tweet_request_v2(
     text: str,

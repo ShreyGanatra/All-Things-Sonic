@@ -6,16 +6,16 @@ import os
 import asyncio
 from functools import partial
 
-from api import BEARER_TOKEN, request_api, ApiRequestResult
-from auth import TwitterUserAuth
-from twitter_auth_base import TwitterAuthBase, TwitterAuthOptions  
-from profile import (
+from src.twitter_scrapper.api import BEARER_TOKEN, request_api, ApiRequestResult
+from src.twitter_scrapper.auth import TwitterUserAuth
+from src.twitter_scrapper.twitter_auth_base import TwitterAuthBase, TwitterAuthOptions  
+from src.twitter_scrapper.profile import (
     get_profile,
     get_user_id_by_screen_name,
     get_screen_name_by_user_id,
     Profile
 )
-from search import (
+from src.twitter_scrapper.search import (
     SearchAPI,
     SearchMode,
     search_profiles,
@@ -24,8 +24,12 @@ from search import (
     fetch_quoted_tweets_page
 )
 
-from timeline_v1 import QueryProfilesResponse, QueryTweetsResponse
-from tweets import Tweet
+
+from src.twitter_scrapper.timeline_v1 import QueryProfilesResponse, QueryTweetsResponse
+from src.twitter_scrapper.tweets import (
+    Tweet,
+    create_create_tweet_request
+)
 
 TW_URL = 'https://twitter.com'
 USER_TWEETS_URL = 'https://twitter.com/i/api/graphql/E3opETHurmVJflFsUBVuUQ/UserTweets'
@@ -99,3 +103,18 @@ class TwitterScraper:
             raise ValueError("Must login before searching tweets")
             
         return await self.search_api.search_tweets(query, search_mode, max_tweets)
+
+    async def send_tweet(
+        self,
+        text: str,
+        replyToTweetId: str = None,
+        mediaData: List[Dict[str, Any]] = None,
+        hideLinkPreview: bool = False
+    ) -> Dict[str, Any]:
+        return await create_create_tweet_request(
+            text,
+            self.auth,
+            replyToTweetId,
+            mediaData,
+            hideLinkPreview,
+        );

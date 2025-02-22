@@ -7,6 +7,7 @@ from src.connections.goat_connection import GoatConnection
 from src.connections.groq_connection import GroqConnection
 from src.connections.openai_connection import OpenAIConnection
 from src.connections.twitter_connection import TwitterConnection
+from src.connections.twitter_scrapper_connection import TwitterScrapperConnection
 from src.connections.farcaster_connection import FarcasterConnection
 from src.connections.ollama_connection import OllamaConnection
 from src.connections.echochambers_connection import EchochambersConnection
@@ -35,6 +36,8 @@ class ConnectionManager:
     def _class_name_to_type(class_name: str) -> Type[BaseConnection]:
         if class_name == "twitter":
             return TwitterConnection
+        elif class_name == "twitter-scrapper":
+            return TwitterScrapperConnection
         elif class_name == "anthropic":
             return AnthropicConnection
         elif class_name == "openai":

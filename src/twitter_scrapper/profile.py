@@ -4,7 +4,7 @@ import json
 from typing import Optional, Dict, Any, List, Tuple, Union
 from urllib.parse import urlencode
 from dataclasses import dataclass
-from twitter_auth_base import TwitterAuthBase
+from src.twitter_scrapper.twitter_auth_base import TwitterAuthBase
 
 def get_avatar_original_size_url(url: str) -> str:
     """

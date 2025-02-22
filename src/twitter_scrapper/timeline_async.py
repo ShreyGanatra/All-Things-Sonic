@@ -1,8 +1,8 @@
 from typing import AsyncGenerator, Callable, Optional, TypeVar, Awaitable
 
 from profile import Profile
-from tweets import Tweet
-from timeline_v1 import QueryTweetsResponse, QueryProfilesResponse
+from src.twitter_scrapper.tweets import Tweet
+from src.twitter_scrapper.timeline_v1 import QueryTweetsResponse, QueryProfilesResponse
 
 T = TypeVar('T', Tweet, Profile)
 QueryResponse = TypeVar('QueryResponse', QueryTweetsResponse, QueryProfilesResponse)

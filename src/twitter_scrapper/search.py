@@ -3,13 +3,13 @@ import json
 from urllib.parse import urlencode
 from enum import Enum
 
-from api import request_api, add_api_features
-from twitter_auth_base import TwitterAuthBase
-from profile import Profile
-from timeline_v1 import QueryProfilesResponse, QueryTweetsResponse
-from timeline_async import get_tweet_timeline, get_user_timeline
-from tweets import Tweet
-from timeline_search import (
+from src.twitter_scrapper.api import request_api, add_api_features
+from src.twitter_scrapper.twitter_auth_base import TwitterAuthBase
+from src.twitter_scrapper.profile import Profile
+from src.twitter_scrapper.timeline_v1 import QueryProfilesResponse, QueryTweetsResponse
+from src.twitter_scrapper.timeline_async import get_tweet_timeline, get_user_timeline
+from src.twitter_scrapper.tweets import Tweet
+from src.twitter_scrapper.timeline_search import (
     SearchTimeline,
     parse_search_timeline_tweets,
     parse_search_timeline_users

@@ -2,8 +2,8 @@
 
 import aiohttp
 from typing import Optional, Dict, Any
-from exceptions import ApiError
-from profile import Profile, get_avatar_original_size_url, get_profile, get_screen_name_by_user_id, get_user_id_by_screen_name
+from src.twitter_scrapper.exceptions import ApiError
+from src.twitter_scrapper.profile import Profile, get_avatar_original_size_url, get_profile, get_screen_name_by_user_id, get_user_id_by_screen_name
 
 import json
 import base64
@@ -11,8 +11,7 @@ import otpauth
 import asyncio
 from urllib.parse import urlencode
 from aiohttp import FormData
-from twitter_client import TwitterClient
-from twitter_auth_base import TwitterAuthBase, TwitterAuthOptions
+from src.twitter_scrapper.twitter_auth_base import TwitterAuthBase, TwitterAuthOptions
 
 
 class TwitterUserAuth(TwitterAuthBase):
