@@ -5,13 +5,20 @@ Made with ❤️ by Shrey Ganatra for Sonic DeFAI Hackathon
 
 This project integrates multiple AI-powered tools and blockchain-based connections to create a **Multi-Agent Supervisor** system. The system is capable of scraping data, processing information, and executing AI-driven actions. 
 
+![Multi-Agent Superviso](mas.png)
+
+## ⚙️ Functionality
+
+- **Daily Loop**: Fetches the latest updates on **Sonic** and posts them to Twitter.
+- **Weekly Recap**: Aggregates all updates from the week and posts a recap about **ALL THINGS SONIC**.
+
 ## 🔥 Features & Code Additions
 
 1. **Twitter Scraper** → Extracts search results and posts from Twitter.
 2. **DefiLlama Connection** → Retrieves protocol-related data from DefiLlama.
 3. **WebPage Connection** → Fetches and processes any webpage information.
 4. **LangGraph Multi-Agent Supervisor** → Manages and orchestrates multiple AI agents for advanced task automation.
-5. **Diagram Generation** → Visual representation of collected and processed data.
+
 
 ## 🔗 Integrations
 
@@ -61,9 +68,4 @@ This project integrates multiple AI-powered tools and blockchain-based connectio
 - Enhanced AI-driven decision-making.
 - Real-time automation & event-driven triggers.
 
-
-## ⚙️ Functionality
-
-- **Daily Loop**: Fetches the latest updates on **Sonic** and posts them to Twitter.
-- **Weekly Recap**: Aggregates all updates from the week and posts a recap about **ALL THINGS SONIC**.
 
