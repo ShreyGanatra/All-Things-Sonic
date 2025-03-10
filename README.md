@@ -7,8 +7,6 @@ Made with ❤️ by Shrey Ganatra for Sonic DeFAI Hackathon
 
 This project integrates multiple AI-powered tools and blockchain-based connections to create a **Multi-Agent Supervisor** system. The system is capable of scraping data, processing information, and executing AI-driven actions. 
 
-![Multi-Agent Superviso](mas.png)
-
 ## ⚙️ Social Agent
 - **Twitter Scraper** → Extracts search results and posts from Twitter.
   Say Bye 👋 to Rate Limits!
@@ -26,7 +24,7 @@ This project integrates multiple AI-powered tools and blockchain-based connectio
 
 ## DeFi Agent
 **LangGraph Multi-Agent Supervisor** → Manages and orchestrates multiple AI agents for advanced task automation.
-
+![Multi-Agent Superviso](mas.png)
 
 
 
