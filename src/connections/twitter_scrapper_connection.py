@@ -1,12 +1,15 @@
 import os
 import logging
 import asyncio
+import time
+from datetime import datetime
 from typing import Dict, Any, Optional, List
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.twitter_scrapper.scrapper import TwitterScraper
 from src.twitter_scrapper.search import SearchMode
 from src.helpers import print_h_bar
+from langgraph.prebuilt import ToolExecutor
 
 logger = logging.getLogger("connections.twitter_scrapper_connection")
 
@@ -25,8 +28,11 @@ class TwitterScrapperAPIError(TwitterScrapperError):
 class TwitterScrapperConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.scraper: Optional[TwitterScraper] = None
-        self._is_configured: Optional[bool] = None
+        self.scraper = None
+        self.config = self.validate_config(config)
+        # Initialize a single event loop for all async operations
+        self._loop = None
+        self.test_connection()
 
     @property
     def is_llm_provider(self) -> bool:
@@ -74,16 +80,6 @@ class TwitterScrapperConnection(BaseConnection):
             "email": email
         }
 
-    def _run_async(self, coroutine):
-        """Helper method to run async code in a new event loop"""
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(coroutine)
-
     def test_connection(self) -> bool:
         """Test the Twitter scrapper connection"""
         try:
@@ -97,9 +93,15 @@ class TwitterScrapperConnection(BaseConnection):
                         credentials["password"],
                         credentials["email"]
                     )
+                    self.register_actions()
                 
-                self._run_async(_login())
+                # Get the shared event loop
+                loop = self._get_event_loop()
+                
+                # Run the login in the shared loop
+                loop.run_until_complete(_login())
                 print("Login successful in test connection")
+                    
             return True
         except Exception as e:
             logger.error(f"Connection test failed: {str(e)}")
@@ -138,12 +140,10 @@ class TwitterScrapperConnection(BaseConnection):
                 credentials["email"]
             )
 
-            self._is_configured = True
             logger.info("\n✅ Twitter scrapper authentication successfully set up!")
             return True
 
         except Exception as e:
-            self._is_configured = False
             error_msg = f"Setup failed: {str(e)}"
             logger.error(error_msg)
             raise TwitterScrapperConfigurationError(error_msg)
@@ -175,26 +175,35 @@ class TwitterScrapperConnection(BaseConnection):
 
     def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute a Twitter scrapper action with validation"""
-        if action_name not in self.actions:
-            raise KeyError(f"Unknown action: {action_name}")
 
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
+        logger.debug(f"Performing action: {action_name}")
+        # if action_name not in self.actions:
+        #     raise KeyError(f"Unknown action: {action_name}")
 
         # Ensure connection
         if not self.scraper:
             self.test_connection()
-
+            
         # Add config parameters if not provided
         if "count" in kwargs and kwargs["count"] is None:
             kwargs["count"] = self.config["timeline_read_count"]
 
-        # Call the appropriate method based on action name
-        method_name = action_name.replace('-', '_')
+        method_name = action_name
+        method_name = method_name.replace("_", "-")
         method = getattr(self, method_name)
+        
         return method(**kwargs)
+
+        # Use the tool executor pattern
+        # connection_name = self.__class__.__name__.lower().replace('connection', '')
+        # tool_name = f"{connection_name}_{action_name}"
+        
+        # try:
+        #     result = self.tool_executor.invoke({"name": tool_name, "arguments": kwargs})
+        #     return result
+        # except Exception as e:
+        #     logger.error(f"Error executing action {action_name}: {e}")
+        #     raise TwitterScrapperAPIError(f"Failed to execute {action_name}: {str(e)}")
 
     def get_user_tweets(self, username: str, count: int = None) -> List[Dict]:
         """Get tweets from a specific user"""
@@ -222,25 +231,25 @@ class TwitterScrapperConnection(BaseConnection):
         """Search for tweets matching a query"""
         print(f"Searching tweets with query: {query}, count: {count or self.config['timeline_read_count']}")
         try:
-            async def _search():
-                if not self.scraper or not await self.scraper.auth.is_logged_in():
-                    credentials = self._get_credentials()
-                    self.scraper = TwitterScraper(credentials["bearer_token"])
-                    await self.scraper.login(
-                        credentials["username"],
-                        credentials["password"],
-                        credentials["email"]
-                    )
-                
+            # Define the search function
+            async def _search_tweets():
+
+                if not self.scraper:
+                    self.test_connection()
                 return await self.scraper.search_tweets(
                     query,
                     search_mode=SearchMode.TOP,
                     max_tweets=count or self.config["timeline_read_count"]
                 )
-
-            tweets = self._run_async(_search())
+            
+            # Get the shared event loop
+            loop = self._get_event_loop()
+            
+            # Run the search in the shared loop
+            tweets = loop.run_until_complete(_search_tweets())
             logger.debug(f"Retrieved {len(tweets)} tweets")
             return tweets
+                
         except Exception as e:
             logger.error(f"Failed to search tweets: {str(e)}")
             raise TwitterScrapperAPIError(f"Failed to search tweets: {str(e)}")
@@ -260,12 +269,27 @@ class TwitterScrapperConnection(BaseConnection):
         """Send a tweet"""
         logger.debug(f"Sending tweet: {tweet}")
         try:
-             self._run_async(self.scraper.send_tweet(tweet, replyToTweetId, mediaData, hideLinkPreview))
+            # Define the send tweet function
+            async def _send_tweet():
+                await self.scraper.send_tweet(tweet, replyToTweetId, mediaData, hideLinkPreview)
+            
+            # Get the shared event loop
+            loop = self._get_event_loop()
+            
+            # Run the send tweet operation in the shared loop
+            loop.run_until_complete(_send_tweet())
+                
         except Exception as e:
             logger.error(f"Failed to send tweet: {str(e)}")
             raise TwitterScrapperAPIError(f"Failed to send tweet: {str(e)}")
 
-        
+    def _get_event_loop(self):
+        """Get or create an event loop for async operations"""
+        if self._loop is None or self._loop.is_closed():
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+        return self._loop
+
     def disconnect(self) -> None:
         """Cleanup resources"""
         logger.debug("Disconnecting Twitter scrapper")
@@ -274,9 +298,21 @@ class TwitterScrapperConnection(BaseConnection):
                 self.scraper.auth.close()
             except Exception as e:
                 logger.error(f"Error closing auth: {str(e)}")
+                
+        # Close the event loop if it exists
+        if self._loop and not self._loop.is_closed():
+            try:
+                # Cancel all running tasks
+                for task in asyncio.all_tasks(self._loop):
+                    task.cancel()
+                
+                # Close the loop
+                self._loop.close()
+            except Exception as e:
+                logger.error(f"Error closing event loop: {str(e)}")
         
         self.scraper = None
-        self._is_configured = None
+        self._loop = None
 
     def is_configured(self, verbose = False) -> bool:
         """Check if Twitter scrapper credentials are configured and valid"""
@@ -298,21 +334,7 @@ class TwitterScrapperConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Twitter scrapper actions"""
         self.actions = {
-            "get-user-tweets": Action(
-                name="get-user-tweets",
-                parameters=[
-                    ActionParameter("username", True, str, "Twitter username to get tweets from"),
-                    ActionParameter("count", False, int, "Number of tweets to retrieve")
-                ],
-                description="Get tweets from a specific user"
-            ),
-            "get-user-profile": Action(
-                name="get-user-profile",
-                parameters=[
-                    ActionParameter("username", True, str, "Twitter username to get profile for")
-                ],
-                description="Get user profile information"
-            ),
+           
             "search-tweets": Action(
                 name="search-tweets",
                 parameters=[
@@ -331,12 +353,13 @@ class TwitterScrapperConnection(BaseConnection):
                 ],
                 description="Post a tweet"
             ),
-            "get-tweet-replies": Action(
-                name="get-tweet-replies",
-                parameters=[
-                    ActionParameter("tweet_id", True, str, "ID of the tweet to get replies for"),
-                    ActionParameter("count", False, int, "Number of replies to retrieve")
-                ],
-                description="Get replies to a specific tweet"
-            )
+            
         }
+        
+        # Create tool executor for registered actions
+        try:
+            tools = [self._create_tool(action) for action in self.actions.values()]
+            self.tool_executor = ToolExecutor(tools)
+        except Exception as e:
+            logger.error(f"Failed to create tool executor: {e}")
+            raise e

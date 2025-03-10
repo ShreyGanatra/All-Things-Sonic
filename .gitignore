@@ -8,13 +8,6 @@ __pycache__/
 .env
 twitter_config.json
 
-# AGENTS
-agents/*.json
-# Include example agent and general config
-!agents/auto-example.json
-!agents/legacy-example.json
-!agents/example.json
-!agents/general.json
 
 # macOS
 .DS_Store

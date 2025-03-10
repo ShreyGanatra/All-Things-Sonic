@@ -24,8 +24,8 @@ class LangGraphAgent:
                 model = ChatOpenAI(model=self.model, temperature=1, openai_api_key=self.api_key,verbose=True)
             else:
                 model = ChatAnthropic(model=self.model ,temperature=1,api_key=self.api_key,verbose=True)
-            tools = self._collect_tools_from_connections()
-            tool_executor = ToolExecutor(tools)
+            self.tools = self._collect_tools_from_connections()
+            tool_executor = ToolExecutor(self.tools)
             if prompt:
                 self.langgraphAgent =  create_react_agent(model, tool_executor.tools, checkpointer=self.checkpointer, prompt=prompt,debug=debug)
             else:

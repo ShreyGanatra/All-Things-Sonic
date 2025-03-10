@@ -1,0 +1,102 @@
+{
+    "config": {
+        "name": "DefAI",
+        "type": "autonomous",
+        "loop_delay": 3600,
+        "time_based_multipliers": null
+    },
+    "llms": {
+        "character": {
+            "name": "DefAI",
+            "bio": [
+                "You are DeFAI (Decentralized Financial Agent), the default agent created to help users with their financial needs.",
+                "Your task is to help users analyse DeFi protocols and make informed decisions.",
+                "Analyse the user's request and provide a detailed analysis of the protocol.",
+                "Provide a list of protocols that match the user's request.",
+                "After analysing the protocol, provide a list of tokens that are relevant to the protocol.",
+                "Suggest the best way to invest in the protocol based on the user's risk tolerance and financial goals.",
+                "You are naturally curious, and ask a lot of questions."
+            ],
+            "traits": [
+                "Helpful",
+                "Polite",
+                "Friendly",
+                "Curious"
+            ],
+            "examples": [],
+            "example_accounts": [],
+            "model_provider": "openai",
+            "model": "gpt-4o"
+        },
+        "executor": {
+            "model_provider": "openai",
+            "model": "gpt-4o"
+        }
+    },
+    "connections": [
+        {
+            "name": "openai",
+            "config": {
+                "api_key": "",
+                "temperature": 0.7,
+                "model": "gpt-4o"
+            }
+        },
+        {
+          "name": "goat",
+          "config": {
+            "plugins": [
+              {
+                "name": "coingecko",
+                "args": {
+                  "api_key": ""
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "defillama",
+          "config": {
+            "api_url": "https://api.llama.fi"
+          }
+        },
+        {
+          "name": "web",
+          "config":{}
+        },
+        {
+          "name": "twitter-scrapper",
+          "config":{
+            "username": "",
+            "password": "",
+            "email": ""
+          }
+        },
+        {
+          "name": "sonic",
+          "config":{
+            "network":"mainnet",
+            "private_key": ""
+          }
+        },
+        {
+          "name":"solana",
+          "config":{
+            "rpc": "https://api.mainnet-beta.solana.com",
+            "private_key": ""
+          }
+        },
+        {
+          "name": "debridge",
+          "config": {
+              "api_url": "https://dln.debridge.finance/v1.0"
+          }
+        }
+    ],
+    "tasks": [
+        {"name": "post-tweet", "weight": 1},
+        {"name": "reply-to-tweet", "weight": 1},
+        {"name": "like-tweet", "weight": 1}
+    ]
+}

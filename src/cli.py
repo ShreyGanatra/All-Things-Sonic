@@ -523,7 +523,7 @@ class ZerePyCLI:
         
 
         #load langgraph agent 
-        # langgraph_agent = LangGraphAgent("openai","gpt-4o-mini",True,self.agent.connection_manager,prompt=SYSTEM_PROMPT,debug=True)
+        # langgraph_agent = LangGraphAgent("openai","gpt-4o",True,self.agent.connection_manager,prompt=SYSTEM_PROMPT,debug=False)
         langgraph_agent = DeFiProtocolAnalyzer("openai","gpt-4o",True,self.agent.connection_manager,debug=False)
         messages = []
 
@@ -562,8 +562,8 @@ class ZerePyCLI:
         """Main CLI loop"""
         self._print_welcome_message()
         self._load_default_agent()
-        self._list_loaded_agent()
-        self.list_connections()
+        # self.list_connections()
+        # self._list_loaded_agent()
         
         # Start CLI loop
         while True:

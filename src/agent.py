@@ -4,11 +4,37 @@ from typing_extensions import TypedDict
 from src.helpers import print_h_bar
 from src.langgraph_agent.langgraph_agent import LangGraphAgent
 from src.connection_manager import ConnectionManager
-from src.langgraph_agent.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT, \
-    OBSERVATION_PROMPT
-
+from src.langgraph_agent.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT, OBSERVATION_PROMPT
+from src.prompts import SOCIAL_MEDIA_LOOP_PROMPT
+from dotenv import load_dotenv
+import os
+import requests
+from langchain_openai import ChatOpenAI
 # Initialize logger
 logger = logging.getLogger("agent")
+
+
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
+
+
+def _make_request_coingecko(endpoint: str) -> dict:
+    url = f"{COINGECKO_API_URL}{endpoint}"
+    headers = {
+        "accept": "application/json",
+        "x-cg-demo-api-key": os.getenv("COINGECKO_API_KEY")
+    }
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+
+def get_coin_historical_chart(coin_id: str) -> dict:
+    endpoint = f"/coins/{coin_id}/market_chart?vs_currency=usd&days=7&interval=daily&precision=3"
+    return _make_request_coingecko(endpoint)
+
+def get_coin_price(coin_id: str) -> dict:
+    endpoint = f"/simple/price?ids={coin_id}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true&precision=3"
+    return _make_request_coingecko(endpoint)
+
 
 class AgentState(TypedDict):
     context: dict
@@ -23,10 +49,14 @@ class ZerePyAgent:
         try:
             # Load agent configuration
             self._setup_agent_config(agent_config)
+            self._load_environment_variables()
+            self.posts = []
+            self.agent = ChatOpenAI(
+                    model=self.model,
+                    api_key=self.api_key,
+                    temperature=1,
+                )
 
-            # Build the graph
-            self._build_graph()
-        
         except Exception as e:
             logger.error("Could not load ZerePy Agent")
             raise e
@@ -35,27 +65,14 @@ class ZerePyAgent:
         """Delegate action execution to the connection manager"""
         return self.connection_manager.perform_action(connection, action, **kwargs)
 
-    def _build_graph(self):
-        # Construct graph
-        graph_builder = StateGraph(AgentState)
-
-        # Add nodes
-        graph_builder.add_node("observation", self.observation_step)
-        graph_builder.add_node("determination", self.determination_step)
-        graph_builder.add_node("division", self.division_step)
-        graph_builder.add_node("execution", self.execution_step)
-        graph_builder.add_node("evaluation", self.evaluation_step)
-
-        # Add edges
-        graph_builder.add_edge(START, "observation")
-        graph_builder.add_edge("observation", "determination")
-        graph_builder.add_edge("determination", "division")
-        graph_builder.add_edge("division", "execution")
-        graph_builder.add_edge("execution", "evaluation")
-        graph_builder.add_edge("evaluation", "observation")
-
-        # Initialize the graph
-        self.graph = graph_builder.compile()
+    def _load_environment_variables(self):
+        load_dotenv()
+        if self.model_provider == "openai":
+            self.api_key = os.getenv("OPENAI_API_KEY")
+        else:
+            self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not self.api_key:
+            raise ValueError("API key not found in environment variables")
 
     def _setup_agent_config(self, agent_config: dict):
         try:
@@ -68,6 +85,7 @@ class ZerePyAgent:
             # CONNECTIONS
             connections_config = agent_config["connections"]
             self.connection_manager = ConnectionManager(connections_config)
+            self.connection_manager.list_connections()
             self.connections = self.connection_manager.get_connections()
 
             # LLM CONFIG
@@ -82,50 +100,6 @@ class ZerePyAgent:
             self.example_accounts = character_config.get("example_accounts", [])
             self.model_provider = character_config["model_provider"]
             self.model = character_config["model"]
-
-            # EXECUTOR + DRIVER LLM
-            executor_config = llm_config["executor"]
-            self.executor_model_provider = executor_config["model_provider"]
-            self.executor_model = executor_config["model"]
-
-            # SYSTEM PROMPT
-            self.system_prompt = self._construct_system_prompt()
-
-            # LLM PREFERENCES
-            self.llm_prefs = {
-                'provider': self.model_provider,
-                'model': self.model,
-                'system_prompt': self.system_prompt
-            }
-
-            # LANGCHAIN AGENTS
-            # LangChain functionality can only be enabled if the model providers are OpenAI or Anthropic
-            if self.model_provider in ["openai", "anthropic"] and self.executor_model_provider in ["openai", "anthropic"]:
-                self.langchain_enabled = True
-                self.driver_llm = LangGraphAgent(
-                    model_provider=self.executor_model_provider,
-                    model=self.executor_model,
-                    bind_tools=True,
-                    connection_manager=self.connection_manager
-                )
-                self.character_llm = LangGraphAgent(
-                    model_provider=self.model_provider,
-                    model=self.model,
-                    bind_tools=True,
-                    connection_manager=self.connection_manager
-                )
-                self.executor_agent = LangGraphAgent(
-                    model_provider=self.executor_model_provider,
-                    model=self.executor_model,
-                    bind_tools=True,
-                    connection_manager=self.connection_manager
-                )
-            else:
-                self.langchain_enabled = False
-                self.driver_llm = None
-                self.character_llm = None
-                self.executor_agent = None
-
             # TASK CONFIGS
             self.tasks = agent_config.get("tasks", [])
             self.task_weights = [task.get("weight", 0) for task in self.tasks]
@@ -135,162 +109,95 @@ class ZerePyAgent:
         except Exception as e:
             raise Exception(f"Error setting up agent configs: {e}")
 
-    def _construct_system_prompt(self) -> str:
-        """Construct the system prompt from agent configuration"""
-        prompt_parts = []
-        prompt_parts.extend(self.bio)
-
-        if self.traits:
-            prompt_parts.append("\nYour key traits are:")
-            prompt_parts.extend(f"- {trait}" for trait in self.traits)
-
-        if self.examples or self.example_accounts:
-            prompt_parts.append("\nHere are some examples of your style (Please avoid repeating any of these):")
-            if self.examples:
-                prompt_parts.extend(f"- {example}" for example in self.examples)
-
-            if self.example_accounts:
-                for example_account in self.example_accounts:
-                    tweets = self.connection_manager.perform_action(
-                        connection_name="twitter",
-                        action_name="get-latest-tweets-from-user",
-                        params=[example_account]
-                    )
-                    if tweets:
-                        prompt_parts.extend(f"- {tweet['text']}" for tweet in tweets)
-
-        system_prompt = "\n".join(prompt_parts)
-        return system_prompt
      
-    def _replenish_inputs(self, context_dict: dict = {}):
-        try:
-            if "timeline_tweets" not in context_dict or context_dict["timeline_tweets"] is None or len(context_dict["timeline_tweets"]) == 0:
-                if any("tweet" in task["name"] for task in self.tasks):
-                    logger.info("\n👀 READING TIMELINE")
-                    context_dict["timeline_tweets"] = self.connection_manager.perform_action(
-                        connection_name="twitter",
-                        action_name="read-timeline",
-                        params=[]
-                    )
-
-            if "room_info" not in context_dict or context_dict["room_info"] is None:
-                if any("echochambers" in task["name"] for task in self.tasks):
-                    logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
-                    context_dict["room_info"] = self.connection_manager.perform_action(
-                        connection_name="echochambers",
-                        action_name="get-room-info",
-                        params={}
-                    )
-
-            return context_dict
-        except Exception as e:
-            logger.error(f"Error replenishing inputs: {e}")
-
-
-    def observation_step(self, state: AgentState):
-        print("\n=== OBSERVATION STEP ===")
-        print(f"Summarizing contextual information...")
-
-        # Update AgentState context
-        state["context"] = self._replenish_inputs(state["context"])
-
-        try:
-            observation_prompt = OBSERVATION_PROMPT.format(context=state['context'], task_log=state['task_log'])
-            context_summary = self.driver_llm.invoke(observation_prompt).content
-        except Exception as e:
-            logger.error(f"Error generating context summary: {e}")
-            context_summary = "There is currently no additional context available."
-
-        print(f"\nCONTEXT SUMMARY:\n{context_summary}")
-        return {"context_summary": context_summary}
-
-    def determination_step(self, state: AgentState):
-        print("\n=== DETERMINATION STEP ===")
-        print("Determining next task...")
-
-        task = state['current_task']
-
-        if task is None or task.strip() == "":
-            determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
-            task = self.character_llm.invoke(determination_prompt).content
-
-        print(f"\nDETERMINED TASK: {task}")
-        return {"current_task": task}
-
-    def division_step(self, state: AgentState):
-        print("\n=== DIVISION STEP ===")
-        print(f"Creating action plan for task: {state['current_task']}")
-        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
-        action_plan_text = self.driver_llm.invoke(division_prompt).content
-        action_plan = action_plan_text.split("\n")
-
-        print(f"\nGENERATED ACTION PLAN:\n{action_plan_text}")
-        return {"action_plan": action_plan}
-
-    def execution_step(self, state: AgentState) -> AgentState:
-        print("\n=== EXECUTION STEP ===")
-        print("Executing actions...")
-        action_plan = state["action_plan"]
-
-        if not action_plan:
-            print("No actions to execute")
-            return 
-
-        for action in action_plan:
-            print(f"\nExecuting action: {action}")
-            execution_prompt = EXECUTION_PROMPT.format(action_log=state["action_log"],  preferred_llm_config=str(self.llm_prefs), action=action)
-            response = self.executor_agent.invoke(execution_prompt)
-            state = self.executor_agent.process_response(response, state)
+    def get_protocol_info(self):
+        context = {}
+        protocols = ["silo finance","beets", "avalon labs", "aave V3", "shadow exchange", "euler V2", "swapX"]
+        for protocol in protocols:
+            context[f"{protocol}_protocol_info"] = self.perform_action(
+                                connection="defillama",
+                                action="get_protocol_info",
+                                params=[protocol]
+                            )
+        return context
         
-        return {"action_log": state["action_log"]}
 
-    def evaluation_step(self, state: AgentState):
-        #Convert action_logs to a summary of what the agent did, and then pass it to task_log
-        print("\n=== EVALUATION STEP ===")
-        print("Evaluating action logs...")
-        action_log = state["action_log"]
-        evaluation_prompt = EVALUATION_PROMPT.format(current_task=state['current_task'], action_log =  "\n".join(f"{action['action']}:\n" +f"Result: {action['result']}"for action in action_log))
-        generated_task_log = self.driver_llm.invoke(evaluation_prompt).content
-        print(f"Generated task log:\n{generated_task_log}")
-        state["action_plan"] = []
-        state["action_log"] = []
-        state["current_task"] = None
-        state["task_log"].append(generated_task_log)
-        state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
+    def get_sonic_details(self):
+        context = {}
+        context["sonic_current_price"] = get_coin_price("sonic-3")
+        context["sonic_historical_data"] = get_coin_historical_chart("sonic-3")
+        return context
 
-        # Delay before next loop
-        logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
-        print_h_bar()
-        time.sleep(self.loop_delay)
-        return state
+    def create_context(self, sonic_details, protocol_info):
+        """Create a context (string) for the agent"""
+        context = f'''
+        Current Price of SONIC $S:
+        {sonic_details["sonic_current_price"]}
+
+        Historical Data of SONIC $S:
+        {sonic_details["sonic_historical_data"]}
+
+        Silo Finance Protocol Info: 
+        {protocol_info["silo finance_protocol_info"]}
+
+        Beets Protocol Info:
+        {protocol_info["beets_protocol_info"]}
+
+        Avalon Labs Protocol Info:
+        {protocol_info["avalon labs_protocol_info"]}
+
+        Aave V3 Protocol Info:
+        {protocol_info["aave V3_protocol_info"]}
+
+        Shadow Exchange Protocol Info:
+        {protocol_info["shadow exchange_protocol_info"]}
+
+        Euler V2 Protocol Info:
+        {protocol_info["euler V2_protocol_info"]}
+        
+        SwapX Protocol Info:
+        {protocol_info["swapX_protocol_info"]}
+
+
+        Recent Posts:
+        {self.posts[-5:]}
+        '''
+        return context
+
 
     def loop(self, task=None):
-        # Check if LangChain enabled
-        if not self.langchain_enabled:
-            logger.info("Running an Autonomous agent requires an OpenAI or Anthropic LLM. Make sure you defined valid OpenAI or Anthropic LLMs for your 'character' and 'executor' LLMs.")
-            return None
-
-        task_to_perform = input("\n🔹 Enter the first task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
-                                "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ YOUR TASK: "
-                                )
-
-        initial_state = {
-            "context": {},
-            "current_task": task_to_perform,
-            "context_summary": "",
-            "action_plan": [],
-            "action_log": [],
-            "task_log": [],
-        }
         logger.info(f"\n🚀 Starting autonomous agent loop ...")
         logger.info("Press Ctrl+C at any time to stop the loop.")
         print_h_bar()
         time.sleep(2)
-        logger.info("Starting loop in 5 seconds...")
-        for i in range(5, 0, -1):
-            logger.info(f"{i}...")
-            time.sleep(1)
+        # logger.info("Starting loop in 5 seconds...")
+        # for i in range(5, 0, -1):
+        #     logger.info(f"{i}...")
+        #     time.sleep(1)
 
-        # Run the graph
-        final_state = self.graph.invoke(initial_state)
-        return final_state
+        try:
+            while True:
+                try:
+                    sonic_details = self.get_sonic_details() 
+                    protocol_info = self.get_protocol_info()
+                    self.context = self.create_context(sonic_details, protocol_info)
+                    messages = [{"role": "system", "content": SOCIAL_MEDIA_LOOP_PROMPT},{"role": "user", "content": self.context}]
+                    response = self.agent.invoke(messages)
+
+                    tweet = response.content
+                    print(tweet)
+                    self.connections["twitter-scrapper"].send_tweet(tweet)
+                    self.posts.append(tweet)
+                    self.posts = self.posts[-5:]
+
+                    logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+                    print_h_bar()
+                    time.sleep(self.loop_delay)
+                except Exception as e:
+                    logger.error(f"\n❌ Error in agent loop iteration: {e}")
+                    logger.info(f"⏳ Waiting {self.loop_delay} seconds before retrying...")
+                    time.sleep(self.loop_delay)
+        except KeyboardInterrupt:
+            logger.info("\n🛑 Agent loop stopped by user.")
+            return
+            

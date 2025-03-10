@@ -58,14 +58,6 @@ class TwitterScraper:
         self.search_api = None
         self._event_loop = None
 
-    def _ensure_event_loop(self):
-        """Ensure we have an event loop to run async code"""
-        try:
-            self._event_loop = asyncio.get_event_loop()
-        except RuntimeError:
-            self._event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._event_loop)
-
     async def login(self, username: str, password: str, email: str):
         """Login to Twitter with user credentials"""
         print("Creating TwitterUserAuth instance")
@@ -99,9 +91,10 @@ class TwitterScraper:
         Returns:
             List of tweet dictionaries containing tweet data
         """
-        if not self.search_api or not await self.auth.is_logged_in():
+        if not self.search_api:
+        # if not self.search_api or not await self.auth.is_logged_in():
             raise ValueError("Must login before searching tweets")
-            
+        print("Searching tweets from scrapper")
         return await self.search_api.search_tweets(query, search_mode, max_tweets)
 
     async def send_tweet(

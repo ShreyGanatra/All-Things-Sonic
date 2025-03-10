@@ -1,4 +1,6 @@
 # 🚀 ALL THINGS SONIC
+One Stop for ALL THINGS SONIC: Regular updates and weekly recaps on Socials, DeFi tasks from the agent.
+
 Made with ❤️ by Shrey Ganatra for Sonic DeFAI Hackathon
 
 ## 📌 Overview
@@ -7,36 +9,37 @@ This project integrates multiple AI-powered tools and blockchain-based connectio
 
 ![Multi-Agent Superviso](mas.png)
 
-## ⚙️ Functionality
-
+## ⚙️ Social Agent
+- **Twitter Scraper** → Extracts search results and posts from Twitter.
+  Say Bye 👋 to Rate Limits!
 - **Daily Loop**: Fetches the latest updates on **Sonic** and posts them to Twitter.
 - **Weekly Recap**: Aggregates all updates from the week and posts a recap about **ALL THINGS SONIC**.
+- **Chat with Agent**: Chat with the agent to get the latest tweets about any topic or post a tweet with help of the agent.
 
-## 🔥 Features & Code Additions
+## 🔥 Tools Added
 
 1. **Twitter Scraper** → Extracts search results and posts from Twitter.
+  Say Bye 👋 to Rate Limits!
 2. **DefiLlama Connection** → Retrieves protocol-related data from DefiLlama.
 3. **WebPage Connection** → Fetches and processes any webpage information.
-4. **LangGraph Multi-Agent Supervisor** → Manages and orchestrates multiple AI agents for advanced task automation.
+4. **Retrieval Augmented Generation** → Retrieves information from the Sonic whitepaper and uses it to answer questions.
+
+## DeFi Agent
+**LangGraph Multi-Agent Supervisor** → Manages and orchestrates multiple AI agents for advanced task automation.
+
+
 
 
 ## 🔗 Integrations
 
 - **Sonic** → AI-driven actions.
 - **Debridge** → Cross-chain interactions.
-- **ZepPy** → AI framework integration.
+- **ZerePy** → AI framework integration.
 - **Goat** → On-chain action execution with support for:
   - CoinGecko
   - Dex Screener
   - Allora
 
-## 🛠️ Tech Stack
-
-- **Python/Node.js** (for scripting & automation)
-- **LangGraph** (multi-agent management)
-- **Blockchain APIs** (for on-chain operations)
-- **AI Frameworks** (for intelligent decision-making)
-- **Web Scraping Tools** (for data extraction)
 
 ## 🎯 Use Cases
 
@@ -49,18 +52,21 @@ This project integrates multiple AI-powered tools and blockchain-based connectio
 
 1. Clone the repository:
    ```bash
-   git clone <repo-link>
-   cd <project-folder>
+   git clone https://github.com/ShreyGanatra/All-Things-Sonic.git
+   cd All-Things-Sonic
    ```
 2. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   poetry install --no-root
    ```
 3. Run the Multi-Agent Supervisor:
    ```bash
-   python main.py
+   poetry run python main.py
    ```
-4. Configure API keys for integrations (Twitter, DeFiLlama, etc.) in `.env` file.
+4. Configure API keys for integrations in `.env` file.
+   ```bash
+   cp .env.example .env
+   ```
 
 ## 📜 Future Enhancements
 

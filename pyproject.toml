@@ -39,6 +39,9 @@ langchain-community = "^0.3.17"
 langmem = "0.0.15"
 beautifulsoup4 = "^4.13.3"
 otpauth = "^2.1.1"
+pymupdf4llm = "^0.0.17"
+chromadb = "0.6.3"
+langchain-text-splitters = "0.3.6"
 [tool.poetry.extras]
 server = ["fastapi", "uvicorn", "requests"]
 

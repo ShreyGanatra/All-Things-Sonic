@@ -215,7 +215,7 @@ class DeBridgeConnection(BaseConnection):
             logger.error(f"Failed to fetch supported chains: {str(e)}")
             raise DeBridgeAPIError(f"Failed to fetch supported chains: {str(e)}")
 
-    def get_tokens_info(self, chainId: str, search: str = None) -> Dict[str, Any]:
+    def get_tokens_info(self, chainId: str, search: str = None, limit: int = 10) -> Dict[str, Any]:
         """
         Get token information for a specific chain
         Args:
@@ -246,13 +246,10 @@ class DeBridgeConnection(BaseConnection):
                     search_term in token.get("address", "").lower()
                 ]
             
-            Limit results if specified
-            if "limit" in params:
                 try:
-                    limit = int(params["limit"])
                     tokens = tokens[:limit]
                 except (ValueError, TypeError):
-                    pass  # Ignore invalid limit
+                    pass  
                     
             return {
                 "status": "success",
